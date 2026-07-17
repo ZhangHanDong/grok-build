@@ -26,7 +26,7 @@
 # 第四部：TUI
 
 - [第 13 章：事件循环与 AppView](ch13-tui-eventloop.md)
-- [第 14 章：增量渲染管线]()
+- [第 14 章：增量渲染管线](ch14-render-pipeline.md)
 - [第 15 章：流式 Markdown](ch15-streaming-markdown.md)
 - [第 16 章：终端工程学]()
 

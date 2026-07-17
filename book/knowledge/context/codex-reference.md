@@ -38,3 +38,11 @@ stale: false
 
 - 每条新 codex 论断必须走 fact-checker WebFetch 验证；无法验证的在文中标注。
 - 章末统一免责声明："基于 openai/codex 2026 年年中 main 分支"。
+
+## 渲染（ch14 已验证）
+
+- codex **也 fork 了 Terminal**：`codex-rs/tui/src/custom_terminal.rs` 从 ratatui 派生自己的
+  Terminal/Frame，含 inline viewport 与 diff_buffers。差异不在"是否 fork"。
+- 关键差异：codex `flush()` 返回 `io::Result<()>`（无变更信号）；Grok `flush()` 返回
+  `io::Result<bool>`——正是这个 bool 使"零变更零字节"光标保护得以干净实现。
+- 勿写成"codex 更多用上游 ratatui、Grok 才 fork"——两家都 fork。
