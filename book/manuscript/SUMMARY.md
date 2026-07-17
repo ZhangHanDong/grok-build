@@ -34,3 +34,7 @@
 
 - [第 17 章：MCP、Hooks 与插件生态](ch17-extensions.md)
 - [第 18 章：企业级治理与记忆系统](ch18-governance-memory.md)
+
+# 附录
+
+- [端到端追踪](appendix-e2e-traces.md)
