@@ -4,7 +4,7 @@
 
 # 第一部：全景
 
-- [第 1 章：AI 编程代理的时代与 Grok Build]()
+- [第 1 章：AI 编程代理的时代与 Grok Build](ch01-era-and-what.md)
 - [第 2 章：75 个 crate 的工程哲学](ch02-crate-philosophy.md)
 
 # 第二部：代理运行时
