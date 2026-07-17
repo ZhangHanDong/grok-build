@@ -46,3 +46,10 @@ stale: false
 - 关键差异：codex `flush()` 返回 `io::Result<()>`（无变更信号）；Grok `flush()` 返回
   `io::Result<bool>`——正是这个 bool 使"零变更零字节"光标保护得以干净实现。
 - 勿写成"codex 更多用上游 ratatui、Grok 才 fork"——两家都 fork。
+
+## 扩展生态（ch17 已验证）
+
+- codex **有完整的 hooks 系统**（docs/config.md：user/project/session/managed 四层，
+  含 allow_managed_hooks_only 企业管控开关）。勿写成"Hooks 是 Grok 相对 codex 的额外扩展点"。
+- 真实差异：Grok 有官方插件市场（xai-org/plugin-marketplace）+ 打包分发机制；
+  Grok Hooks 兼容 Claude settings.json 格式，codex hooks 自成配置体系。
