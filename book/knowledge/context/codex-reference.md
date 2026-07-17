@@ -53,3 +53,23 @@ stale: false
   含 allow_managed_hooks_only 企业管控开关）。勿写成"Hooks 是 Grok 相对 codex 的额外扩展点"。
 - 真实差异：Grok 有官方插件市场（xai-org/plugin-marketplace）+ 打包分发机制；
   Grok Hooks 兼容 Claude settings.json 格式，codex hooks 自成配置体系。
+
+## workspace 结构（ch2 已验证，2026-07 WebFetch）
+
+- codex-rs `[workspace] members` **约 128 个**（远多于 Grok 的 75 第一方 crate），
+  **纯手写 Cargo workspace、无 Bazel**。含 `ext/*`（ext/mcp、ext/skills、ext/memories、
+  ext/guardian…）、`utils/*`（二十来个微 crate）、`memories/read`、`memories/write`。
+  ⚠️ 勿写成"codex 拆得更少更粗 / 手写清单必须克制"——**方向是反的**，codex 证明手写
+  workspace 也能扩到 100+ crate。真实差异：Grok 的 codegen/ 清单是 Bazel 生成投影
+  （Cargo.toml:1 "Auto-generated"），codex 是原生手写。粒度趋同，清单真源不同。
+- codex `protocol` 独立 crate、core 经 codex_protocol 引用——与 Grok `-types` 依赖倒置
+  哲学同源（ch2/ch3/ch4 通用）。
+
+## 记忆子系统（ch18 已验证）
+
+- codex **不止 AGENTS.md**：当前 main 有 `ext/memories`、`memories/read`、`memories/write`
+  等 crate，是程序化记忆子系统。勿写成"codex 只靠用户显式维护的 AGENTS.md"。
+  内部检索/整合实现未逐行核对——对比只做取向层，不对其实现下断言。
+- codex 有 secrets/guardian/hooks/config/cloud-config 等治理设施，但**无 Grok 那套
+  Ed25519 签名策略栈**（signed requirements + 落盘再校验 + 六层合并）。治理差异在
+  威胁模型深度，非"codex 无治理"。

@@ -5,7 +5,7 @@
 # 第一部：全景
 
 - [第 1 章：AI 编程代理的时代与 Grok Build]()
-- [第 2 章：75 个 crate 的工程哲学]()
+- [第 2 章：75 个 crate 的工程哲学](ch02-crate-philosophy.md)
 
 # 第二部：代理运行时
 
@@ -33,4 +33,4 @@
 # 第五部：扩展生态与治理
 
 - [第 17 章：MCP、Hooks 与插件生态](ch17-extensions.md)
-- [第 18 章：企业级治理与记忆系统]()
+- [第 18 章：企业级治理与记忆系统](ch18-governance-memory.md)
