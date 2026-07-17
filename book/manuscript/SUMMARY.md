@@ -21,7 +21,7 @@
 - [第 9 章：文件编辑的艺术](ch09-file-editing.md)
 - [第 10 章：时间旅行——checkpoint 与 worktree](ch10-time-travel.md)
 - [第 11 章：沙箱](ch11-sandbox.md)
-- [第 12 章：拿来主义与归一层]()
+- [第 12 章：拿来主义与归一层](ch12-porting.md)
 
 # 第四部：TUI
 
