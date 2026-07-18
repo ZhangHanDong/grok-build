@@ -1,3 +1,6 @@
 /target
 **/*.rs.bk
 .DS_Store
+
+# atlas 符号图（派生产物，勿提交）
+.agent-spec/

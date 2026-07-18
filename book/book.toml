@@ -9,7 +9,7 @@ build-dir = "dist"
 
 [output.html]
 default-theme = "rust"
-git-repository-url = "https://github.com/xai-org/grok-build"
+git-repository-url = "https://github.com/ZhangHanDong/grok-build"
 additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
 [output.html.fold]

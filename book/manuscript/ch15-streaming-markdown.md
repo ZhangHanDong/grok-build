@@ -321,7 +321,7 @@ Grok Build 选择在终端内消化图表，随之而来的就是 15.5 的整套
 
 ### 版本演化说明
 
-> 本章核心分析基于本书快照仓库（同步自 xAI monorepo，commit c68e39f，2026-07）。
+> 本章核心分析基于本书快照仓库（同步自 xAI monorepo，commit 8adf901，SOURCE_REV 2ec0f0c，2026-07）。
 > 涉及的 crate：xai-grok-markdown、xai-grok-mermaid、xai-grok-pager（mermaid_worker 部分）。
 > codex 对比基于 openai/codex 2026 年年中 main 分支。上游同步后请以
 > `book/tools/check_chapter.py` 校验本章引用有效性，失效引用见修订队列。

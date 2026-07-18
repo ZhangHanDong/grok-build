@@ -103,9 +103,11 @@ monorepo"）。也就是说，真正的开发发生在 xAI 内部那个庞大的
 
 为了让这份镜像可追溯，仓库根有一个 `SOURCE_REV` 文件，记录它对应的 monorepo
 完整 commit SHA（README.md:34-35）。在写作本书的快照里，这个值是
-`2ec0f0c8488842da03a71eeee3c61154957ca919`（SOURCE_REV 文件），而开源仓库自身
-的发布 commit 是 `c68e39f`（"Publish harness and TUI open-source"）。**本书所有
-"版本演化说明"以这两个坐标为基准**——当你读到与本书描述不符的代码时，第一件事
+`2ec0f0c8488842da03a71eeee3c61154957ca919`（SOURCE_REV 文件），它由同步 commit
+`8adf901`（"Synced from monorepo"）携带——**这才是本书分析的代码快照**。（`c68e39f`
+是仓库最初的开源发布 commit，"Publish harness and TUI open-source"，但它早于
+SOURCE_REV 机制、本身不含该文件，别把它当分析基准。）**本书各章"版本演化说明"
+以 SOURCE_REV 为基准**——当你读到与本书描述不符的代码时，第一件事
 就是核对你手上的 `SOURCE_REV` 与发布 commit 是否与本书一致。
 
 这个"投影"身份还解释了仓库里两个容易困惑的地方：
@@ -290,8 +292,10 @@ codex 与 Grok Build 是高度可比的一对：都是一线 AI 实验室（Open
 
 ### 版本演化说明
 
-> 本章及全书的分析基准有两个坐标：开源仓库发布 commit `c68e39f`（2026 年 7 月），
-> 及其 `SOURCE_REV` 指向的 monorepo 快照 `2ec0f0c8488842da03a71eeee3c61154957ca919`。
+> 本章及全书的分析基准是 `SOURCE_REV` 指向的 monorepo 快照
+> `2ec0f0c8488842da03a71eeee3c61154957ca919`（由同步 commit `8adf901` 携带，
+> 2026 年 7 月）。（`c68e39f` 是仓库最初的开源发布 commit，早于 SOURCE_REV 机制，
+> 不作分析基准。）
 > 由于本仓库是从内部 monorepo 定期投影的，README 与 crate 结构会随同步更新；本章
 > 引用的 README 行号以该快照为准。开始阅读时，请先核对你检出的 `SOURCE_REV` 与
 > 发布 commit 是否与此一致——这是判断后续所有章节是否仍然适用的第一步。

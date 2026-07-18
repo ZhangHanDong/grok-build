@@ -29,18 +29,20 @@ def main() -> int:
     repo = Path(opts.get("--repo-root", ".")).resolve()
 
     text = path.read_text(encoding="utf-8")
-    failures: list[str] = []
+    failures: list[str] = []   # 硬门禁：客观、可判定
+    warnings: list[str] = []   # 软警告：篇幅/密度等风格项，不阻断（见 STYLE.md）
 
-    # 1. 字数（剔除代码块）
+    # 1. 字数（剔除代码块）——软警告。篇幅由内容决定，不由下限驱动。
     prose = re.sub(r"```.*?```", "", text, flags=re.S)
     words = len(re.sub(r"\s", "", prose))
     if not (min_words <= words <= max_words):
-        failures.append(f"字数 {words} 不在 [{min_words}, {max_words}] 区间")
+        warnings.append(f"字数 {words} 不在建议区间 [{min_words}, {max_words}]")
 
-    # 2. file:line 引用有效性（形如 path/to/file.rs:123，仅检查指向 crates/ 的）
+    # 2. file:line 引用（形如 path/to/file.rs:123，仅指向 crates/、prod/ 的）
+    #    数量下限=软警告；但每条引用的“不越界/文件存在”=硬门禁。
     cites = re.findall(r"`?((?:crates|prod)/[\w\-./]+\.\w+):(\d+)`?", text)
     if len(cites) < min_cites:
-        failures.append(f"file:line 引用 {len(cites)} 处，少于 {min_cites}")
+        warnings.append(f"file:line 引用 {len(cites)} 处，少于建议的 {min_cites}")
     for rel, line in cites:
         f = repo / rel
         if not f.exists():
@@ -58,11 +60,14 @@ def main() -> int:
     if "设计要点回顾" not in text:
         failures.append('缺少章末"设计要点回顾"清单')
 
+    for w in warnings:
+        print(f"WARN: {w}", file=sys.stderr)
     if failures:
         for f in failures:
             print(f"FAIL: {f}", file=sys.stderr)
         return 1
-    print(f"OK: {path.name} 字数={words} 引用={len(cites)}")
+    print(f"OK: {path.name} 字数={words} 引用={len(cites)}"
+          + (f"（{len(warnings)} 条软警告）" if warnings else ""))
     return 0
 
 
