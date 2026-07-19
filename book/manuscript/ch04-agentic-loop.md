@@ -155,6 +155,23 @@ result = self.process_conversation_turn(req_id, /* … */, None).await;
 的关系则是嵌套而非互斥：recovery 在内层把契约补齐后，外层 goal 判定照常进行；
 实务中两者很少同时激活——完成契约多用于子代理，goal 编排多用于主会话。
 
+**goal 完成的另一面：声称完成 ≠ 系统接受完成。** 上面治的是"该调的收尾工具没调"；
+还有一种"没交差"更隐蔽：模型**调了** `update_goal(completed: true)`、嘴上说完成了，
+但事情根本没做完。Grok Build 不把这句话当事实。`update_goal` 每次调用都配一个
+`oneshot::Sender<UpdateGoalAck>` 发给 `SessionActor`，**工具阻塞在这个 ack 上**，
+直到拿到裁决才回复模型——"消息刚发出去就谎称成功"被结构性地堵死（update_goal/mod.rs:1）。
+
+裁决怎么来？一次声称完成会**并行启动默认 3 个对抗性 skeptic 子代理**，各自独立判断
+"目标真达成了吗"，以多数"不反驳"为通过门槛（`⌈3/2⌉ = 2`，一个橡皮图章或一个误反驳
+都翻不了盘，goal_classifier.rs:98）。裁决回到工具时是一个带语义的 `UpdateGoalAck`：
+`Accepted` / `ClassifierNotAchieved` / `ClassifierBlocked` / `ClassifierStalled` /
+`ClassifierCapReached`（update_goal/mod.rs:47），工具据此把**真实结论**回给模型，
+而不是一句"已记录"。两条原则值得拎出：**其一，模型的声明是待验证的命令，不是事实**
+——"我完成了"要过对抗性复核才算数；**其二，失败语义分两类**——验证反驳（业务失败）
+fail-closed 不放行，验证基础设施给不出结论（CapReached/Stalled）则可 fail-open，
+不让验证器自己的故障永久卡死一个真达成的目标。这与 4.6 的"预算不串账"、第 17 章
+hook 的 fail 语义分层是同一种思路：每一处 fail 方向都对应"失败时谁承担、后果多重"。
+
 ## 4.5 StructuredOutput：给不支持约束的后端补一个"假工具"
 
 调用方经常需要 agent 返回符合 JSON Schema 的结构化结果。先看设计空间里的备选项：
@@ -235,7 +252,92 @@ session 两级账本同时标脏，宁可把账记糊也不漏记——计费正
 账已经收不回来了（超时/查询失败）就 fail-closed 标脏；账只是还没到（任务还活着）
 就等它。
 
-## 4.7 同一问题，codex 怎么做
+## 4.7 工具作为控制面：模式切换、反向请求与用户在环
+
+前面的工具都在**操作对象**——读文件、跑命令、改代码。还有一类工具不操作对象，而是
+**改变 agent 自己的运行方式**：它们是控制面。
+
+**Plan mode：把工具集切成只读。** `enter_plan_mode` 不写任何业务数据，它翻转一个
+会话级状态机。`PlanModeState` 有四态：`Inactive → Pending → Active → ExitPending`，
+持久化，处理中途切换、重启恢复、异步退出（plan_mode.rs:17）。进入 Active 后：工作区
+进入只读约束、只有会话的 plan 文件可写、即使开了"全部批准"那道独立的 `PlanEditGate`
+仍生效、turn 只能靠"询问用户"或"提交计划"结束。这本质上是 8.7 媒体族"能力门控"的
+又一种形态——**一个工具调用重新定义了之后所有工具的可用性**：采样时按 plan 状态
+过滤工具定义（sampler_turn.rs:149 附近的 `filter_cursor_tools_by_plan_mode`）。
+
+**反向请求：工具把控制权交回用户。** `ask_user_question` 更反直觉——它不是发个通知
+就返回，而是**阻塞着把一个请求送回用户**：
+
+```mermaid
+sequenceDiagram
+    participant M as 模型
+    participant T as ask_user_question.run()
+    participant C as session 协调器
+    participant U as 客户端/pager
+    M->>T: 调用（带问题）
+    T->>C: mpsc 反向请求
+    C->>U: ACP ext_method 往返
+    Note over T: future 停在 oneshot（默认最多 30 分钟）
+    U-->>C: 用户答 / 取消 / 超时
+    C-->>T: oneshot 回填
+    T-->>M: 答案成为 tool result
+```
+
+工具 `run()` 里发一条 mpsc 请求给 session 级协调器，协调器做一次 ACP `ext_method`
+往返推给客户端，工具 future 停在一个 oneshot 上，默认最多等 30 分钟
+（ask_user_question/mod.rs:219）。等待期由一个 RAII guard 守护：无论 await 正常返回、
+被取消、还是出错，drop 都会清掉 pending 状态，"移除或空操作"让 resolution 幂等——
+**first-answer-wins**，第二次回答静默丢弃（pending_interaction.rs:79）。这是把"人在环"
+做成一个普通工具调用的干净办法：对模型它只是又一个返回结果的工具，底下却是一整套
+跨进程的请求-应答与生命周期管理。
+
+**一个容易误读的标注：`is_read_only` ≠ 无副作用。** `ask_user_question`、`update_goal`、
+`todo_write` 都标 `is_read_only: true`（update_goal/mod.rs:238、ask_user_question/mod.rs:338，
+还有测试锁死），但它们显然会改会话状态、甚至引发外部交互（弹窗问用户）。所以这里的
+"只读"是**"不写工作区文件"**的意思，用于并发/审批分类，不等于"无副作用"。把控制面
+工具的 `read_only` 读成"纯函数"，会误判它们的并发安全——这正是 4.3 串行审批 / 并行
+执行分类里要小心的地方。
+
+## 4.8 agent 的时间维度：后台任务、监控与定时调度
+
+到此为止，循环都在响应"现在"：模型说话、工具跑完、再采样。但真实任务常要处理"未来"
+——一个 10 分钟的构建、一条随时可能刷新的日志、一件半小时后才该做的事。Grok Build
+用三种工具把"时间"接进 agent，各对应一种时间语义：
+
+```mermaid
+flowchart LR
+    BG["后台命令<br/>现在开始·未来完成"] --> ACT
+    MON["monitor<br/>外部变化 → 唤醒"] --> ACT
+    SCH["scheduler<br/>未来时刻 → 注入"] --> ACT
+    ACT["SessionActor 空闲被唤醒"] --> MO[模型处理]
+```
+
+**后台命令：工作现在开始、未来完成。** `task` / `wait_tasks` / `get_task_output` 让
+agent spawn 出子代理或后台任务，不必同步干等。4.3 已见等待型工具在有插话时会被
+select 抢占——用户 Esc 后的新指令不必陪着一个 10 分钟的轮询空等。
+
+**monitor：外部状态变化时主动唤醒。** `monitor` 启动一个后台脚本，把它的**每一行
+stdout 变成一条会话事件**——"你可以继续工作，通知到达时出现在对话里"（monitor/tool.rs:30）。
+它不是 `tail -f` 的包装，而是一条带背压与资源纪律的管线：token bucket 限流 + suppression
+追踪，持续过载会自动杀掉 monitor（rate_limiter.rs:44）；被抑制的事件计数、恢复时补一条
+通知，不让洪泛冲垮对话；管线用 `Weak` 句柄持有终端后端、**从不用强 `Arc`**——一个后台
+monitor 不该把整个终端后端永久钉住（tool.rs:167、233）；子代理退出时，它的 monitor 会被
+**reparent 给父代理**、在父的 runtime 上重启管线（tool.rs:230）。
+
+**scheduler：在未来某刻重新注入意图。** `scheduler_create` / `delete` / `list` 背后不是
+cron 命令，而是一个 `SchedulerActor`：命令与定时器在一个 `biased` select! 里统一调度
+（actor.rs:44）；普通任务只活在当前会话，`durable` 任务经 `Resources` 持久化（actor.rs:29、
+create.rs:40）；重启时 `handle_missed_tasks` 补触发错过的一次性任务（actor.rs:37、153）；
+循环任务 7 天自动过期、上限 50、最小间隔 60 秒（create.rs:88、interval.rs:3）。
+
+三者放在一起，能看清 agent 获得"时间维度"的完整形状：
+
+> 后台命令让工作脱离当前 turn；monitor 把"外部世界变了"翻译成一次唤醒；scheduler 把
+> "未来该做某事"存成一条会到期的意图。三者都在回答同一个难题——**一个本质请求-响应的
+> 模型，如何安全地持有跨越多个 turn、甚至跨越重启的异步状态**。答案是把状态交给 actor
+> 与 Resources（第 3 章），把唤醒交给通知系统，工具本身只负责登记与查询。
+
+## 4.9 同一问题，codex 怎么做
 
 openai/codex 的 turn 循环在两个维度上与 Grok Build 分岔：
 
@@ -263,7 +365,7 @@ BYOK（Bring Your Own Key，用户自带第三方模型密钥）/Ollama/OpenAI-c
 （本节对 codex 的描述基于 openai/codex 仓库 2026 年年中的 main 分支，核对时以
 `codex-rs/core` 为准。）
 
-## 4.8 模式提炼
+## 4.10 模式提炼
 
 **模式一：分层预算，互不串账（layered budgets）**。不设全局计数器，而是给每类
 具体失控模式（格式违规、契约违约、认证失败、自信循环）配独立预算。前提：每类
@@ -292,13 +394,19 @@ BYOK（Bring Your Own Key，用户自带第三方模型密钥）/Ollama/OpenAI-c
 - 串行审批（熔断）+ 并行执行（自愈）+ per-path 锁 + 索引槽回填 → 4.3
 - PlanEditGate 独立于权限 YOLO 快路径：串联的安全系统各守各的不变量 → 4.3
 - recovery 是完成契约重试非传输重试；恢复轮 json_schema 传 None 的约束消解 → 4.4
+- goal 完成：声称≠接受，update_goal 阻塞到 verdict、3 skeptic 多数不反驳、
+  业务 fail-closed / 验证无结论 fail-open → 4.4
 - StructuredOutput 假工具：schema 即参数、校验错误回填重调、3 次用尽仍 Completed → 4.5
 - 取消双路径穿透；取消时跳过 usage drain（fail-closed 留脏标记）→ 4.6
 - 防失控真相：主会话无全局上限，分层预算互不串账，人是交互场景的 circuit breaker → 4.6
 - TodoGate 反向预算（防停太早）；流排空屏障与 usage fail-closed 两档严格度 → 4.6
+- 工具作为控制面：plan mode 四态切只读工具集、ask_user_question 反向请求
+  （mpsc→ACP→oneshot）+ RAII first-answer-wins；is_read_only≠无副作用 → 4.7
 - codex 对照：并发锁粒度（全局 RwLock 门 vs per-path Mutex）、原生 schema vs
-  能力垫片、无 goal 层 → 4.7
-- 四个可迁移模式：分层预算、非对称错误处理、能力垫片、槽位回填 → 4.8
+  能力垫片、无 goal 层 → 4.9
+- 时间维度：后台命令(现在起未来完成)/monitor(每行stdout→事件、限流+Weak+reparent)/
+  scheduler(SchedulerActor biased、durable持久化、补触发、7天/50/60s) → 4.8
+- 四个可迁移模式：分层预算、非对称错误处理、能力垫片、槽位回填 → 4.10
 
 ---
 
@@ -306,5 +414,7 @@ BYOK（Bring Your Own Key，用户自带第三方模型密钥）/Ollama/OpenAI-c
 
 > 本章核心分析基于本书快照仓库（同步自 xAI monorepo，commit 8adf901，SOURCE_REV 2ec0f0c，2026-07）。
 > 涉及文件：xai-grok-shell 的 turn.rs / tool_calls.rs / goal.rs / sampler_turn.rs /
-> acp_session.rs，xai-grok-sampler 的 request_task.rs。codex 对比基于 openai/codex
+> acp_session.rs / plan_mode.rs / pending_interaction.rs / goal_classifier.rs，
+> xai-grok-tools 的 update_goal / ask_user_question / monitor / scheduler，
+> xai-grok-sampler 的 request_task.rs。codex 对比基于 openai/codex
 > 2026 年年中 main 分支。上游同步后请以 `book/tools/check_chapter.py` 校验本章引用。
