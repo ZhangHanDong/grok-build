@@ -289,6 +289,20 @@ dependency-free（只依赖 serde），好让 `xai-grok-shell` 与 `xai-grok-pag
 
 三个 crate，三种"边界清晰"的形态：契约的边界、逻辑与接线的边界、概念的边界。
 
+**侧栏：把纪律交给编译器与 CI，而不是 Wiki。** 除了用类型表达意图，还有两个更朴素的
+手法把工程纪律焊进构建。其一，**`#[must_use]` 不只给 `Result`，也给业务状态转换**：忽略
+一个 `SwapDecision` 可能把"不要安装"误当成功（`#[must_use = "a non-Apply decision means
+the config must NOT be installed"]`，crates/codegen/xai-grok-workspace/src/session/swap_policy.rs:183），
+`RefreshOutcome` 必须交给状态转换链、通知回执必须被 `await`
+（crates/codegen/xai-grok-shell/src/auth/refresh/mod.rs:89、
+crates/codegen/xai-grok-tools/src/notification/handle.rs:40）——类型表达语义，`#[must_use]`
+则阻止调用方**静默丢弃**语义。其二，**把事故复盘写成 lint 而不是"以后注意"**：直接调用
+std/tokio 的 `canonicalize` 在 Windows 上会产出 `\\?\` 前缀路径、污染 git 参数与路径
+相等性——项目用 Clippy `disallowed-methods` 禁掉这些 API、引导改用 `dunce::canonicalize`
+（clippy.toml:9），核心协议/运行时 crate 则 `#![forbid(unsafe_code)]`
+（crates/common/xai-tool-runtime/src/lib.rs:9）。**事故复盘的最高形态不是"以后注意"，而是
+让错误 API 过不了 CI。**
+
 ## 2.8 同一问题，codex 怎么做
 
 作为参照系，看看 OpenAI 的 codex（codex-rs，2026 年中 main 分支）如何组织它的

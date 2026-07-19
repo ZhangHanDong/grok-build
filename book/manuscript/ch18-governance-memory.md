@@ -223,6 +223,12 @@ AWS（`AKIA`/`ASIA`）、GitHub（`ghp_`/`github_pat_`）、GitLab/Slack
 ——因为出错的那行 config 可能正含着一个密钥，而默认的 `Display` 会把整行 echo 进
 日志。连报错都要防泄漏。
 
+**侧栏：敏感明文的内存生命周期。** 上面讲的是出站脱敏（把不可信数据当不可信送出门）；
+入站也有一处内存纪律。解密后的 prompt 模板用 `Zeroizing<String>` 包着，drop 时把明文从
+内存里擦掉（crates/codegen/xai-grok-agent/src/prompt/template.rs:1）。同一处注释还诚实地
+标了一句：模板的 XOR"加密"**只是混淆、不是安全边界**——不夸大一个弱手段的强度，和
+"连报错都要防泄漏"是同一种对敏感数据的克制。
+
 ## 18.6 记忆系统：分区、混合检索与去冗
 
 治理讲完，转向记忆。记忆系统默认是关的，需 `--experimental-memory` 或
