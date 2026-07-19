@@ -79,6 +79,20 @@ session_id/
 UI 回放素材——读路径的重要性不同，恢复策略也不同（resume 甚至跳过 updates，
 见 6.7）。
 
+**同一个原则，不同边界不同松紧：兼容策略按边界选，不是一刀切。** 持久化状态对未知字段
+**宽容**——`PermissionState` 用 `#[serde(default)]`、不加 `deny_unknown_fields`
+（crates/codegen/xai-grok-workspace/src/permission/state.rs:10），好让旧版本程序读得了新
+版本写出的文件（缺字段给默认值、多字段不报错）。但这个宽容不是全局默认，是**边界决定**的：
+
+- **协议执行帧**反过来**严格**：流式工具的 wire payload 用 `deny_unknown_fields`
+  （crates/common/xai-tool-runtime/src/streaming.rs:30），一个意外字段直接拒绝——旧生产者
+  发来的废弃字段若被当成合法增量，会把一帧错误解释成正确数据，比报错更危险。
+- **公共 Rust API** 则用 `#[non_exhaustive]`（如 crates/codegen/xai-grok-workspace/src/error.rs:5）：
+  未来加一个 error 变体或 config 字段，不构成破坏性升级。
+
+一句话：**协议执行帧偏严格（未知即错），持久化状态偏宽容（未知即忽略），公共 API 为演进
+留未知空间**。没有"永远拒绝未知"或"永远忽略未知"的教条——松紧由"读错了会怎样"决定。
+
 ## 6.4 persist_ack：一道顺序屏障，而非 fsync 屏障
 
 第 4 章提到用户消息入库带确认。现在看精确语义

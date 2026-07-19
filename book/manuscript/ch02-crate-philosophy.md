@@ -198,6 +198,28 @@ dependency-free（只依赖 serde），好让 `xai-grok-shell` 与 `xai-grok-pag
 **纯数据**部分抽成一个不含 I/O、几乎零依赖的 `-types` crate，让双方都依赖它。这
 一个动作同时买到了三样东西——断环、快编、稳 API。
 
+**从 crate 归属到类型不变量。** 上面讲的是 crate 级的边界——类型放在哪、谁能依赖它。
+但把类型摆对位置，不等于让类型承载了不变量。同一仓库里还有一个更细的刃面：让类型
+本身**拒绝非法值**。Grok Build 在型级焊死了三类不变量：
+
+1. **wire ID 各自独立 newtype**：每个跨线传输的 id 都有专属 newtype，从类型上杜绝把
+   `SessionId` 传成 `ToolId`；更关键的是**构造器验证、`Deserialize` 复用同一个构造器**
+   ——`Deserialize` 先反序列化出裸串再走 `Self::new`（crates/common/xai-tool-protocol/src/ids.rs:5、102），
+   于是从网络进来的值和本地 `new()` 造出来的值共享同一套不变量，**网络不是绕过校验的
+   后门**。
+2. **路径不是裸 `PathBuf`**：`AbsPathBuf` / `RelPathBuf` 在构造时就按方向拒绝——绝对
+   路径类型拒绝相对或非 UTF-8 输入（`AbsPathBuf::new` "Errors if not absolute or not
+   UTF-8"，crates/codegen/xai-grok-paths/src/lib.rs:90），底层用 `camino::Utf8PathBuf`
+   让"是 UTF-8"由类型本身保证。"这是个绝对的 UTF-8 路径"从一句注释变成编译期就带着的
+   证明。
+3. **context window 用 `NonZeroU64`**：从类型上排除"零窗口"这个非法状态与后续除零
+   （crates/codegen/xai-grok-sampling-types/src/types.rs:1047）。
+
+把三例连起来，就是一条完整的链：**裸值 → 验证构造 → 私有字段 → 类型化转换 → Serde
+不绕过验证**。§2.5 的 `-types` crate 给类型安排了一个稳定、低依赖的家；这一步才决定
+住在里面的类型是否真的承载了语义——拆出 `*-types` 只是把类型摆对位置，让类型拒绝非法
+值，才是把意图焊进编译器（这正是本书姊妹篇《类型即意图》那条规范的核心）。
+
 ## 2.6 拆分的收益与代价：一本明白账
 
 极致 crate 化不是免费的。这一节把收益与代价都摆到台面上，因为**只讲收益的架构
