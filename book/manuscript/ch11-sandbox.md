@@ -55,7 +55,7 @@ crates/codegen/xai-grok-shell/src/config/mod.rs:1313）：解析 profile → 构
 
 不可撤销性有强弱之分，要分清楚：Landlock 规则集与 seccomp 过滤器是真正
 root 也卸不掉的（内核不提供接口）；但 Linux 的 read-deny 靠的是 bwrap 的
-挂载命名空间 bind（11.5），持有 `CAP_SYS_ADMIN` 能力的进程理论上可以另建
+挂载命名空间 bind（11.6），持有 `CAP_SYS_ADMIN` 能力的进程理论上可以另建
 挂载命名空间绕开它。所以"不可撤销"精确说是分层的——Landlock/seccomp 本体
 最硬，挂载层的 deny 硬度取决于进程有没有拿到特权能力。沙箱的威胁模型默认
 运行主体不持 `CAP_SYS_ADMIN`；一旦这个前提被打破（比如在特权容器里跑），

@@ -247,7 +247,7 @@ compaction-core、第 8 章 tool runtime 那个"把纯逻辑从 IO 里剥出来"
 解析里也有 fail-closed/fail-open 的分寸：persona 的 instructions 文件读取失败是
 **fail-closed**（中止 spawn，因为 persona 定义了子代理的核心行为，读不到就不该
 带着残缺定义启动），而 role prompt 文件读失败是**软降级只警告**
-（crates/codegen/xai-grok-subagent-resolution/src/overrides.rs:84）。又一次印证 17.3 的观察——fail 语义按"这个东西缺了会不会
+（crates/codegen/xai-grok-subagent-resolution/src/overrides.rs:84）。又一次印证 17.4 的观察——fail 语义按"这个东西缺了会不会
 让结果错得危险"逐项决定，而非一刀切。
 
 ## 17.7 Skills：提示层的扩展
@@ -267,7 +267,7 @@ MCP 是能力，Plugin 是分发，Subagent 是编排，它们在一个插件里
 统一 taxonomy、受同一套权限门约束，令牌隔离（17.2）保的是凭证不泄，而"这个
 外部工具能不能执行"由审批把关；外部工具最大的信任面是它的**调用**而非它的
 凭证，这道门在审批层。其二，**插件安装即引入可执行代码**——插件捆绑的 hook
-脚本与 MCP 子进程都是任意代码，17.4 的路径穿越防护管的是"安装过程别写到
+脚本与 MCP 子进程都是任意代码，17.5 的路径穿越防护管的是"安装过程别写到
 工作区外"，但**安装之后这些代码会以用户身份执行**。市场的信任模型因此不是
 "沙箱住插件"，而是"官方源 + 用户显式安装 + hooks 的启停信任门"——用户装一个
 插件，等于信任它的作者，这一点产品必须让用户清楚，不能用"有路径校验"制造
@@ -287,7 +287,7 @@ session/managed 四层，还带 `allow_managed_hooks_only` 这类企业管控开
 所以"谁有 hooks"不是差异点。两家的分岔在别处：
 
 **其一，分发与市场**。Grok Build 有一个官方插件市场（`xai-org/plugin-marketplace`）
-和把 Skills/Hooks/MCP/命令打包分发的插件机制（17.4）；这套"打包 + 市场分发"
+和把 Skills/Hooks/MCP/命令打包分发的插件机制（17.5）；这套"打包 + 市场分发"
 的生态层是 Grok Build 侧较突出的投入。分发层的存在意味着扩展不只是"用户
 自己写配置"，而是"社区共享、一键安装"——这带来生态潜力，也带来"安装的
 插件即任意代码执行"的信任问题（见下）。
