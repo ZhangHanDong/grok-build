@@ -74,7 +74,10 @@ flowchart TD
         c17["17 MCP/Hooks/插件"]
         c18["18 治理与记忆"]
     end
-    p1 --> p2 --> p3 --> p4 --> p5
+    subgraph p6["第六部 · Rust 工程纪律"]
+        c19["19 韧性工程"]
+    end
+    p1 --> p2 --> p3 --> p4 --> p5 --> p6
     c4 -.采样/工具.-> c8
     c3 -.ACP 消息面.-> c13
 ```

@@ -35,6 +35,11 @@
 - [第 17 章：MCP、Hooks 与插件生态](ch17-extensions.md)
 - [第 18 章：企业级治理与记忆系统](ch18-governance-memory.md)
 
+# 第六部：Rust 工程纪律
+
+- [第 19 章：韧性工程——准入、熔断与取消泄漏](ch19-resilience-engineering.md)
+
 # 附录
 
 - [端到端追踪](appendix-e2e-traces.md)
+- [如何测试异步状态机](appendix-async-testing.md)
