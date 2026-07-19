@@ -38,6 +38,17 @@ global、共享 deadline、过载回 tool_busy）、xai-circuit-breaker 的 Clos
 - book/specs/ch19-resilience-engineering.spec.md
 - book/knowledge/context/resilience.md
 
+### Symbols
+
+本章主轴符号（`atlas lifecycle` 在新鲜图上验证其存在；重命名/删除/移动即报
+`atlas-symbol-missing` 或 `atlas-stale`）：
+
+- rust-atlas: xai_computer_hub_sdk::admission::Admission
+- rust-atlas: xai_computer_hub_sdk::admission::AdmitGuard
+- rust-atlas: xai_circuit_breaker::breaker::CircuitBreaker
+- rust-atlas: xai_circuit_breaker::clock::Clock
+- rust-atlas: xai_grok_sampler::actor::SamplerActor
+
 ### 禁止做
 - 不修改 crates/ 下任何源码
 - 不使用无 file:line 溯源的架构性断言
